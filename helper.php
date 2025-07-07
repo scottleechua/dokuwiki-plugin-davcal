@@ -1561,6 +1561,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getPrivateURLForPage($id)
   {
+      // Check if this is an aggregated calendar (has multiple calendar pages)
+      $calendarPages = $this->getCalendarPagesByMeta($id);
+
+      if($calendarPages !== false && count($calendarPages) > 1)
+      {
+          // This is an aggregated calendar - create a special private URL
+          return $this->getPrivateURLForAggregatedCalendar($id, $calendarPages);
+      }
+
+      // Single calendar - use the original logic
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return false;
@@ -1600,6 +1610,55 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       $url = DOKU_URL.'lib/plugins/davcal/ics.php/'.$url;
       $this->cachedValues['privateurl'][$calid] = $url;
+      return $url;
+  }
+
+  /**
+   * Return the private calendar's URL for an aggregated calendar
+   *
+   * @param string $id the page ID
+   * @param array $calendarPages the calendar pages in the aggregation
+   *
+   * @return mixed The private URL or false
+   */
+  public function getPrivateURLForAggregatedCalendar($id, $calendarPages)
+  {
+      // Create a unique identifier for this aggregated calendar
+      $aggregateId = 'aggregated-' . md5($id . serialize($calendarPages));
+
+      if(isset($this->cachedValues['privateurl'][$aggregateId]))
+        return $this->cachedValues['privateurl'][$aggregateId];
+
+      $sqlite = $this->getDB();
+      if(!$sqlite)
+        return false;
+
+      // Check if we already have a private URL for this aggregated calendar
+      $query = "SELECT url FROM calendartoprivateurlmapping WHERE calid = ?";
+      $res = $sqlite->query($query, $aggregateId);
+      $row = $sqlite->res2row($res);
+
+      if(!isset($row['url']))
+      {
+          $url = 'dokuwiki-aggregated-' . bin2hex(random_bytes(16)) . '.ics';
+          $query = "INSERT INTO calendartoprivateurlmapping (url, calid) VALUES(?, ?)";
+          $res = $sqlite->query($query, $url, $aggregateId);
+          if($res === false)
+            return false;
+
+          // Also store the mapping to the page ID for later retrieval
+          $query = "INSERT INTO pagetocalendarmapping (page, calid) VALUES(?, ?)";
+          $res = $sqlite->query($query, $id, $aggregateId);
+          if($res === false)
+            return false;
+      }
+      else
+      {
+          $url = $row['url'];
+      }
+
+      $url = DOKU_URL.'lib/plugins/davcal/ics.php/'.$url;
+      $this->cachedValues['privateurl'][$aggregateId] = $url;
       return $url;
   }
 
@@ -1649,6 +1708,74 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $evt = $vcal->VEVENT;
           $out .= $evt->serialize();
       }
+      $out .= "END:VCALENDAR\r\n";
+      return $out;
+  }
+
+  /**
+   * Return an aggregated calendar as ICS feed, combining multiple calendars.
+   *
+   * @param string $icsFile The ICS file name for the aggregated calendar
+   *
+   * @return mixed The combined calendar events as string or false
+   */
+  public function getAggregatedCalendarAsICSFeed($icsFile)
+  {
+      $sqlite = $this->getDB();
+      if(!$sqlite)
+        return false;
+
+      // Find the aggregated calendar ID from the URL
+      $query = "SELECT calid FROM calendartoprivateurlmapping WHERE url = ?";
+      $res = $sqlite->query($query, $icsFile);
+      $row = $sqlite->res2row($res);
+
+      if(!isset($row['calid']))
+        return false;
+
+      $aggregateId = $row['calid'];
+
+      // Get the page ID for this aggregated calendar
+      $query = "SELECT page FROM pagetocalendarmapping WHERE calid = ?";
+      $res = $sqlite->query($query, $aggregateId);
+      $row = $sqlite->res2row($res);
+
+      if(!isset($row['page']))
+        return false;
+
+      $pageId = $row['page'];
+
+      // Get the calendar pages for this aggregated calendar
+      $calendarPages = $this->getCalendarPagesByMeta($pageId);
+      if($calendarPages === false || count($calendarPages) <= 1)
+        return false;
+
+      // Load SabreDAV
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+
+      // Start building the combined ICS
+      $out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//DAVCal//DAVCal for DokuWiki//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:";
+      $out .= "Aggregated Calendar\r\n";
+
+      // Combine events from all calendars
+      foreach($calendarPages as $calPage => $color)
+      {
+          $calid = $this->getCalendarIdForPage($calPage);
+          if($calid === false)
+            continue;
+            
+          $events = $this->getAllCalendarEvents($calid);
+          if($events === false)
+            continue;
+            
+          foreach($events as $event)
+          {
+              $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
+              $evt = $vcal->VEVENT;
+              $out .= $evt->serialize();
+          }
+      }
+
       $out .= "END:VCALENDAR\r\n";
       return $out;
   }
