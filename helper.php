@@ -27,17 +27,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   {
       if($this->sqlite === null)
       {
-        $this->sqlite = plugin_load('helper', 'sqlite');
+        $this->sqlite = new \dokuwiki\plugin\sqlite\SQLiteDB('davcal', DOKU_PLUGIN.'davcal/db/');
         if(!$this->sqlite)
         {
             \dokuwiki\Logger::error('DAVCAL', 'This plugin requires the sqlite plugin. Please install it.', __FILE__, __LINE__);
             msg('This plugin requires the sqlite plugin. Please install it.', -1);
-            return false;
-        }
-        if(!$this->sqlite->init('davcal', DOKU_PLUGIN.'davcal/db/'))
-        {
-            $this->sqlite = null;
-            \dokuwiki\Logger::error('DAVCAL', 'Error initialising the SQLite DB for DAVCal', __FILE__, __LINE__);
             return false;
         }
       }
@@ -988,17 +982,20 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         return false;
 
       $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ?";
+      $params = array($calid);
       $startTs = null;
       $endTs = null;
       if($startDate !== null)
       {
         $startTs = new \DateTime($startDate);
-        $query .= " AND lastoccurence > ".$sqlite->quote_string($startTs->getTimestamp());
+        $query .= " AND lastoccurence > ?";
+        $params[] = $startTs->getTimestamp();
       }
       if($endDate !== null)
       {
         $endTs = new \DateTime($endDate);
-        $query .= " AND firstoccurence < ".$sqlite->quote_string($endTs->getTimestamp());
+        $query .= " AND firstoccurence < ?";
+        $params[] = $endTs->getTimestamp();
       }
 
       // Load SabreDAV
@@ -1028,7 +1025,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $calname = $settings['displayname'];
 
           // Retrieve matching calendar objects
-          $res = $sqlite->query($query, $calid);
+          $res = $sqlite->query($query, $params);
           $arr = $sqlite->res2arr($res);
       }
 
