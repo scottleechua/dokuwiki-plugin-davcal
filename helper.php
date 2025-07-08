@@ -17,7 +17,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     * Constructor to load the configuration and the SQLite plugin
     */
   public function __construct() {
-    \dokuwiki\Logger::debug('DAVCAL', 'Helper initialized', __FILE__, __LINE__);
   }
 
   /** Establish and initialize the database if not already done
