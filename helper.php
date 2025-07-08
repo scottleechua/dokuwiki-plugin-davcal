@@ -1684,8 +1684,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       // Find the aggregated calendar ID from the URL
       $query = "SELECT calid FROM calendartoprivateurlmapping WHERE url = ?";
-      $res = $sqlite->query($query, $icsFile);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$icsFile]);
 
       if(!isset($row['calid']))
         return false;
@@ -1694,8 +1693,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       // Get the page ID for this aggregated calendar
       $query = "SELECT page FROM pagetocalendarmapping WHERE calid = ?";
-      $res = $sqlite->query($query, $aggregateId);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$aggregateId]);
 
       if(!isset($row['page']))
         return false;
@@ -1925,8 +1923,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $values[] = $timeRange['end']->getTimeStamp();
     }
 
-    $res = $sqlite->query($query, $values);
-    $arr = $sqlite->res2arr($res);
+    $arr = $sqlite->queryAll($query, $values);
 
     $result = array();
     foreach($arr as $row)
@@ -2006,11 +2003,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           if ($limit > 0) $query .= " LIMIT " . (int)$limit;
 
           // Fetching all changes
-          $res = $sqlite->query($query, $syncToken, $currentToken, $calid);
-          if($res === false)
-              return null;
-
-          $arr = $sqlite->res2arr($res);
+          $arr = $sqlite->queryAll($query, array($syncToken, $currentToken, $calid));
           $changes = array();
 
           // This loop ensures that any duplicates are overwritten, only the
@@ -2041,8 +2034,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           // No synctoken supplied, this is the initial sync.
           $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";
-          $res = $sqlite->query($query);
-          $arr = $sqlite->res2arr($res);
+          $arr = $sqlite->queryAll($query, array($calid));
 
           $result['added'] = $arr;
       }
