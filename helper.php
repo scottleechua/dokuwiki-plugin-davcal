@@ -472,7 +472,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getPersonalSettings($userid = null)
   {
-      // Some sane default settings
       $settings = array(
         'timezone' => $this->getConf('timezone'),
         'weeknumbers' => $this->getConf('weeknumbers'),
@@ -498,8 +497,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(isset($this->cachedValues['settings'][$userid]))
         return $this->cachedValues['settings'][$userid];
       $query = "SELECT key, value FROM calendarsettings WHERE userid = ?";
-      $res = $sqlite->query($query, $userid);
-      $arr = $sqlite->res2arr($res);
+      $arr = $sqlite->queryAll($query, [$userid]);
       foreach($arr as $row)
       {
           $settings[$row['key']] = $row['value'];
@@ -531,8 +529,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT calid FROM pagetocalendarmapping WHERE page = ?";
-      $res = $sqlite->query($query, $id);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$id]);
       if(isset($row['calid']))
       {
         $calid = $row['calid'];
@@ -555,8 +552,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT calid, page FROM pagetocalendarmapping";
-      $res = $sqlite->query($query);
-      $arr = $sqlite->res2arr($res);
+      $arr = $sqlite->queryAll($query, []);
       return $arr;
   }
 
@@ -640,22 +636,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         return false;
       $query = "INSERT INTO calendars (principaluri, displayname, uri, description, components, transparent, synctoken) ".
                "VALUES (?, ?, ?, ?, ?, ?, ?)";
-      $res = $sqlite->query($query, $values[0], $values[1], $values[2], $values[3], $values[4], $values[5], $values[6]);
-      if($res === false)
-        return false;
+      $sqlite->query($query, $values);
 
-      // Get the new calendar ID
       $query = "SELECT id FROM calendars WHERE principaluri = ? AND displayname = ? AND ".
                "uri = ? AND description = ?";
-      $res = $sqlite->query($query, $values[0], $values[1], $values[2], $values[3]);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, array($values[0], $values[1], $values[2], $values[3]));
 
-      // Update the pagetocalendarmapping table with the new calendar ID
       if(isset($row['id']))
       {
           $query = "INSERT INTO pagetocalendarmapping (page, calid) VALUES (?, ?)";
-          $res = $sqlite->query($query, $id, $row['id']);
-          return ($res !== false);
+          $sqlite->query($query, array($id, $row['id']));
+          return true;
       }
 
       return false;
@@ -882,8 +873,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT id, principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken, disabled FROM calendars WHERE id= ? ";
-      $res = $sqlite->query($query, $calid);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$calid]);
       return $row;
   }
 
@@ -899,9 +889,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT disabled FROM calendars WHERE id = ?";
-      $res = $sqlite->query($query, $calid);
-      $row = $sqlite->res2row($res);
-      if($row['disabled'] == 1)
+      $row = $sqlite->queryRecord($query, [$calid]);
+      if($row && $row['disabled'] == 1)
         return false;
       else
         return true;
@@ -981,6 +970,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
 
+      $calid = $this->getCalendarIdForPage($id);
       $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ?";
       $params = array($calid);
       $startTs = null;
@@ -998,7 +988,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $params[] = $endTs->getTimestamp();
       }
 
-      // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
 
       if(strpos($id, 'webdav://') === 0)
@@ -1013,7 +1002,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       else
       {
-          $calid = $this->getCalendarIdForPage($id);
           if(is_null($color))
             $color = $this->getCalendarColorForCalendar($calid);
 
@@ -1024,12 +1012,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $settings = $this->getCalendarSettings($calid);
           $calname = $settings['displayname'];
 
-          // Retrieve matching calendar objects
-          $res = $sqlite->query($query, $params);
-          $arr = $sqlite->res2arr($res);
+          $arr = $sqlite->queryAll($query, $params);
       }
 
-      // Parse individual calendar entries
       foreach($arr as $row)
       {
           if(isset($row['calendardata']))
@@ -1037,7 +1022,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
               $entry = array();
               $vcal = \Sabre\VObject\Reader::read($row['calendardata']);
               $recurrence = $vcal->VEVENT->RRULE;
-              // If it is a recurring event, pass it through Sabre's EventIterator
               if($recurrence != null)
               {
                   $rEvents = new \Sabre\VObject\Recur\EventIterator(array($vcal->VEVENT));
@@ -1045,18 +1029,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                   while($rEvents->valid())
                   {
                       $event = $rEvents->getEventObject();
-                      // If we are after the given time range, exit
                       if(($endTs !== null) && ($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()))
                           break;
-
-                      // If we are before the given time range, continue
                       if(($startTs != null) && ($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp()))
                       {
                           $rEvents->next();
                           continue;
                       }
-
-                      // If we are within the given time range, parse the event
                       $data[] = array_merge(array('calendarname' => $calname),
                                             $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true));
                       $rEvents->next();
@@ -1161,8 +1140,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT calendardata, calendarid, componenttype, uri FROM calendarobjects WHERE uid = ?";
-      $res = $sqlite->query($query, $uid);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$uid]);
       return $row;
   }
 
@@ -1180,8 +1158,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT id, uri, lastmodified, etag, calendarid, size, componenttype FROM calendarobjects WHERE calendarid = ?";
-      $res = $sqlite->query($query, $calid);
-      $arr = $sqlite->res2arr($res);
+      $arr = $sqlite->queryAll($query, [$calid]);
       return $arr;
   }
 
@@ -1199,8 +1176,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT id, uri, lastmodified, etag, calendarid, size, calendardata, componenttype FROM calendarobjects WHERE calendarid = ? AND uri = ?";
-      $res = $sqlite->query($query, $calid, $uri);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$calid, $uri]);
       return $row;
   }
 
@@ -1219,13 +1195,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT id, uri, lastmodified, etag, calendarid, size, calendardata, componenttype FROM calendarobjects WHERE calendarid = ? AND uri IN (";
-      // Inserting a whole bunch of question marks
       $query .= implode(',', array_fill(0, count($uris), '?'));
       $query .= ')';
       $vals = array_merge(array($calid), $uris);
-
-      $res = $sqlite->query($query, $vals);
-      $arr = $sqlite->res2arr($res);
+      $arr = $sqlite->queryAll($query, $vals);
       return $arr;
   }
 
@@ -1246,8 +1219,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT calendardata, uid, componenttype, uri FROM calendarobjects WHERE calendarid = ?";
-      $res = $sqlite->query($query, $calid);
-      $arr = $sqlite->res2arr($res);
+      $arr = $sqlite->queryAll($query, [$calid]);
       return $arr;
   }
 
@@ -1590,15 +1562,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT url FROM calendartoprivateurlmapping WHERE calid = ?";
-      $res = $sqlite->query($query, $calid);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$calid]);
       if(!isset($row['url']))
       {
           $url = 'dokuwiki-' . bin2hex(random_bytes(16)) . '.ics';
           $query = "INSERT INTO calendartoprivateurlmapping (url, calid) VALUES(?, ?)";
-          $res = $sqlite->query($query, $url, $calid);
-          if($res === false)
-            return false;
+          $sqlite->query($query, [$url, $calid]);
       }
       else
       {
@@ -1620,7 +1589,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getPrivateURLForAggregatedCalendar($id, $calendarPages)
   {
-      // Create a unique identifier for this aggregated calendar
       $aggregateId = 'aggregated-' . md5($id . serialize($calendarPages));
 
       if(isset($this->cachedValues['privateurl'][$aggregateId]))
@@ -1630,24 +1598,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
 
-      // Check if we already have a private URL for this aggregated calendar
       $query = "SELECT url FROM calendartoprivateurlmapping WHERE calid = ?";
-      $res = $sqlite->query($query, $aggregateId);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$aggregateId]);
 
       if(!isset($row['url']))
       {
           $url = 'dokuwiki-aggregated-' . bin2hex(random_bytes(16)) . '.ics';
           $query = "INSERT INTO calendartoprivateurlmapping (url, calid) VALUES(?, ?)";
-          $res = $sqlite->query($query, $url, $aggregateId);
-          if($res === false)
-            return false;
+          $sqlite->query($query, [$url, $aggregateId]);
 
-          // Also store the mapping to the page ID for later retrieval
           $query = "INSERT INTO pagetocalendarmapping (page, calid) VALUES(?, ?)";
-          $res = $sqlite->query($query, $id, $aggregateId);
-          if($res === false)
-            return false;
+          $sqlite->query($query, [$id, $aggregateId]);
       }
       else
       {
@@ -1672,8 +1633,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "SELECT calid FROM calendartoprivateurlmapping WHERE url = ?";
-      $res = $sqlite->query($query, $url);
-      $row = $sqlite->res2row($res);
+      $row = $sqlite->queryRecord($query, [$url]);
       if(!isset($row['calid']))
         return false;
       return $row['calid'];

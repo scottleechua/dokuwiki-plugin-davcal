@@ -157,7 +157,11 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                 {
                     $calid = $this->hlp->getCalendarIdForPage($ID);
                     $settings = $this->hlp->getCalendarSettings($calid);
-                    $color = $settings['calendarcolor'];
+                    if (is_array($settings) && isset($settings['calendarcolor'])) {
+                        $color = $settings['calendarcolor'];
+                    } else {
+                        $color = '#3a87ad'; // fallback color if settings are missing
+                    }
                     $data['id'][$id] = $color;
                 }
             }
