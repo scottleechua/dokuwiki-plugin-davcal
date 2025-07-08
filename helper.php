@@ -1528,11 +1528,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getSyncUrlForPage($id, $user = null)
   {
-      if(is_null($userid))
+      if(is_null($user))
       {
         if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
         {
-          $userid = $_SERVER['REMOTE_USER'];
+          $user = $_SERVER['REMOTE_USER'];
         }
         else
         {
