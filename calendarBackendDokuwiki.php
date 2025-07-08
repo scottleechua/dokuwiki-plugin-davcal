@@ -92,6 +92,13 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
         foreach($idInfo as $id => $data)
         {
             $row = $this->hlp->getCalendarSettings($id);
+
+            // Skip this calendar if settings couldn't be retrieved
+            if (!$row) {
+                \dokuwiki\Logger::debug('DAVCAL', 'Skipping calendar '.$id.' - settings not found', __FILE__, __LINE__);
+                continue;
+            }
+
             $components = array();
             if ($row['components']) 
             {
@@ -107,7 +114,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
                 '{' . CalDAV\Plugin::NS_CALDAV . '}supported-calendar-component-set' => new CalDAV\Xml\Property\SupportedCalendarComponentSet($components),
                 //'{' . CalDAV\Plugin::NS_CALDAV . '}schedule-calendar-transp'         => new CalDAV\Xml\Property\ScheduleCalendarTransp($row['transparent'] ? 'transparent' : 'opaque'),
             );
-            if($idInfo[$row['id']]['readonly'] === true)
+            if(isset($idInfo[$id]['readonly']) && $idInfo[$id]['readonly'] === true)
                 $calendar['{http://sabredav.org/ns}read-only'] = '1';
 
 

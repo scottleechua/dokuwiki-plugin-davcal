@@ -872,7 +872,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $sqlite = $this->getDB();
       if(!$sqlite)
         return false;
-      $query = "SELECT id, principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken, disabled FROM calendars WHERE id= ? ";
+      $query = "SELECT id, principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken, disabled, timezone FROM calendars WHERE id= ? ";
       $row = $sqlite->queryRecord($query, [$calid]);
       return $row;
   }
