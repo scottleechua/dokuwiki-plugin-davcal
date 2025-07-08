@@ -146,9 +146,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * based on the stored metadata
    *
    * @param string $id optional The page id
+   * @param bool $skipPermissionCheck optional Skip permission filtering (for private URLs)
    * @return mixed The pages as array or false
    */
-  public function getCalendarPagesByMeta($id = null)
+  public function getCalendarPagesByMeta($id = null, $skipPermissionCheck = false)
   {
       if(is_null($id))
       {
@@ -160,11 +161,19 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       if(isset($meta['id']))
       {
-          // Filter the list of pages by permission
-          $pages = $this->filterCalendarPagesByUserPermission($meta['id']);
-          if(empty($pages))
-            return false;
-          return $pages;
+          if($skipPermissionCheck)
+          {
+              // For private URLs, return all pages without permission filtering
+              return $meta['id'];
+          }
+          else
+          {
+              // Filter the list of pages by permission
+              $pages = $this->filterCalendarPagesByUserPermission($meta['id']);
+              if(empty($pages))
+                return false;
+              return $pages;
+          }
       }
       return false;
   }
@@ -1700,9 +1709,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $pageId = $row['page'];
 
       // Get the calendar pages for this aggregated calendar
-      $calendarPages = $this->getCalendarPagesByMeta($pageId);
+      $calendarPages = $this->getCalendarPagesByMeta($pageId, true); // Skip permission check for private URLs
       if($calendarPages === false || count($calendarPages) <= 1)
-        return false;
+      {
+          if($conf['allowdebug'])
+              \dokuwiki\Logger::error('DAVCAL', 'No calendar pages found or count <= 1 for page: '.$pageId.' (count: '.(is_array($calendarPages) ? count($calendarPages) : 'false').')', __FILE__, __LINE__);
+          return false;
+      }
 
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
