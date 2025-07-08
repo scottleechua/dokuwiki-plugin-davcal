@@ -14,14 +14,14 @@ session_write_close(); //close session
 
 global $conf;
 
-dbglog('---- DAVCAL calendarserver.php init');
+\dokuwiki\Logger::debug('DAVCAL', 'Calendar server initialized', __FILE__, __LINE__);
 
 $hlp = null;
 $hlp =& plugin_load('helper', 'davcal');
 
 if(is_null($hlp))
 {
-    dbglog('Error loading helper plugin');
+    \dokuwiki\Logger::error('DAVCAL', 'Error loading helper plugin', __FILE__, __LINE__);
     die('Error loading helper plugin');
 }
 
@@ -29,13 +29,13 @@ $baseUri = DOKU_BASE.'lib/plugins/davcal/'.basename(__FILE__).'/';
 
 if($hlp->getConfig('disable_sync') === 1)
 {
-    dbglog('Synchronisation is disabled');
+    \dokuwiki\Logger::debug('DAVCAL', 'Synchronisation is disabled', __FILE__, __LINE__);
     die('Synchronisation is disabled');
 }
 
 //Mapping PHP errors to exceptions
 function exception_error_handler($errno, $errstr, $errfile, $errline) {
-    dbglog('Exception occured: '.$errstr);
+    \dokuwiki\Logger::error('DAVCAL', 'Exception occurred: '.$errstr, __FILE__, __LINE__);
     throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
 }
 //set_error_handler("exception_error_handler");
@@ -90,6 +90,6 @@ $server->addPlugin(new Sabre\DAV\Sync\Plugin());
 $browser = new Sabre\DAV\Browser\Plugin();
 $server->addPlugin($browser);
 
-dbglog('$server->exec()');
+\dokuwiki\Logger::debug('DAVCAL', 'Server execution started', __FILE__, __LINE__);
 // And off we go!
 $server->exec();

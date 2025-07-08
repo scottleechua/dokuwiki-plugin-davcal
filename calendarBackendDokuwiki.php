@@ -78,7 +78,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getCalendarsForUser($principalUri) 
     {
-        dbglog('calendarBackendDokuwiki::getCalendarsForUser: '.$principalUri);
+        \dokuwiki\Logger::debug('DAVCAL', 'getCalendarsForUser called for: '.$principalUri, __FILE__, __LINE__);
         $fields = array_values($this->propertyMap);
         $fields[] = 'id';
         $fields[] = 'uri';
@@ -119,7 +119,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
             $calendars[] = $calendar;
 
         }
-        dbglog($calendars);
+        \dokuwiki\Logger::debug('DAVCAL', 'Calendars returned: '.count($calendars), __FILE__, __LINE__);
         return $calendars;
 
     }
@@ -137,7 +137,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function createCalendar($principalUri, $calendarUri, array $properties) 
     {
-        dbglog('calendarBackendDokuwiki::createCalendar called, returning false');
+        \dokuwiki\Logger::debug('DAVCAL', 'createCalendar called, returning false', __FILE__, __LINE__);
         return false;
     }
 
@@ -159,7 +159,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function updateCalendar($calendarId, \Sabre\DAV\PropPatch $propPatch) 
     {
-        dbglog('calendarBackendDokuwiki::updateCalendar for calendarId '.$calendarId);
+        \dokuwiki\Logger::debug('DAVCAL', 'updateCalendar for calendarId '.$calendarId, __FILE__, __LINE__);
         $supportedProperties = array_keys($this->propertyMap);
 
         $propPatch->handle($supportedProperties, function($mutations) use ($calendarId) 
@@ -170,15 +170,15 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
                 switch ($propertyName) 
                 {
                     case '{DAV:}displayname' :
-                        dbglog('updateCalendarName');
+                        \dokuwiki\Logger::debug('DAVCAL', 'updateCalendarName', __FILE__, __LINE__);
                         $this->hlp->updateCalendarName($calendarId, $propertyValue);
                         break;
                     case '{urn:ietf:params:xml:ns:caldav}calendar-description':
-                        dbglog('updateCalendarDescription');
+                        \dokuwiki\Logger::debug('DAVCAL', 'updateCalendarDescription', __FILE__, __LINE__);
                         $this->hlp->updateCalendarDescription($calendarId, $propertyValue);
                         break;
                     case '{urn:ietf:params:xml:ns:caldav}calendar-timezone':
-                        dbglog('updateCalendarTimezone');
+                        \dokuwiki\Logger::debug('DAVCAL', 'updateCalendarTimezone', __FILE__, __LINE__);
                         $this->hlp->updateCalendarTimezone($calendarId, $propertyValue);
                         break;
                     default :
@@ -200,7 +200,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function deleteCalendar($calendarId) 
     {
-        dbglog('calendarBackendDokuwiki::deleteCalendar called, returning false');
+        \dokuwiki\Logger::debug('DAVCAL', 'deleteCalendar called, returning false', __FILE__, __LINE__);
         return;
     }
 
@@ -237,7 +237,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getCalendarObjects($calendarId) 
     {
-        dbglog('calendarBackendDokuwiki::getCalendarObjects for calendarId '.$calendarId);
+        \dokuwiki\Logger::debug('DAVCAL', 'getCalendarObjects for calendarId '.$calendarId, __FILE__, __LINE__);
         $arr = $this->hlp->getCalendarObjects($calendarId);
         $result = array();
         foreach ($arr as $row) 
@@ -252,7 +252,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
                 'component'    => strtolower($row['componenttype']),
             );
         }
-        dbglog($result);
+        \dokuwiki\Logger::debug('DAVCAL', 'Calendar objects returned: '.count($result), __FILE__, __LINE__);
         return $result;
 
     }
@@ -275,9 +275,9 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getCalendarObject($calendarId, $objectUri) 
     {
-        dbglog('calendarBackendDokuwiki::getCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri);
+        \dokuwiki\Logger::debug('DAVCAL', 'getCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri, __FILE__, __LINE__);
         $row = $this->hlp->getCalendarObjectByUri($calendarId, $objectUri);
-        dbglog($row);
+        \dokuwiki\Logger::debug('DAVCAL', 'Calendar object row: '.($row ? 'found' : 'not found'), __FILE__, __LINE__);
         if (!$row) 
             return null;
 
@@ -308,8 +308,8 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getMultipleCalendarObjects($calendarId, array $uris) 
     {
-        dbglog('calendarBackendDokuwiki::getMultipleCalendarObjects for calendarId '.$calendarId);
-        dbglog($uris);
+        \dokuwiki\Logger::debug('DAVCAL', 'getMultipleCalendarObjects for calendarId '.$calendarId, __FILE__, __LINE__);
+        \dokuwiki\Logger::debug('DAVCAL', 'URIs requested: '.count($uris), __FILE__, __LINE__);
         $arr = $this->hlp->getMultipleCalendarObjectsByUri($calendarId, $uris);
 
         $result = array();
@@ -328,7 +328,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
             );
 
         }
-        dbglog($result);
+        \dokuwiki\Logger::debug('DAVCAL', 'Multiple calendar objects returned: '.count($result), __FILE__, __LINE__);
         return $result;
 
     }
@@ -354,10 +354,10 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function createCalendarObject($calendarId, $objectUri, $calendarData) 
     {
-        dbglog('calendarBackendDokuwiki::createCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri);
-        dbglog($calendarData);
+        \dokuwiki\Logger::debug('DAVCAL', 'createCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri, __FILE__, __LINE__);
+        \dokuwiki\Logger::debug('DAVCAL', 'Calendar data length: '.strlen($calendarData), __FILE__, __LINE__);
         $etag = $this->hlp->addCalendarEntryToCalendarByICS($calendarId, $objectUri, $calendarData);
-        dbglog($etag);
+        \dokuwiki\Logger::debug('DAVCAL', 'ETag generated: '.$etag, __FILE__, __LINE__);
         
         return '"' . $etag . '"';
     }
@@ -382,10 +382,10 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function updateCalendarObject($calendarId, $objectUri, $calendarData) 
     {
-        dbglog('calendarBackendDokuwiki::updateCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri);
-        dbglog($calendarData);
+        \dokuwiki\Logger::debug('DAVCAL', 'updateCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri, __FILE__, __LINE__);
+        \dokuwiki\Logger::debug('DAVCAL', 'Calendar data length: '.strlen($calendarData), __FILE__, __LINE__);
         $etag = $this->hlp->editCalendarEntryToCalendarByICS($calendarId, $objectUri, $calendarData);
-        dbglog($etag);
+        \dokuwiki\Logger::debug('DAVCAL', 'ETag generated: '.$etag, __FILE__, __LINE__);
         return '"' . $etag. '"';
 
     }
@@ -403,7 +403,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function deleteCalendarObject($calendarId, $objectUri) 
     {
-        dbglog('calendarBackendDokuwiki::deleteCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri);
+        \dokuwiki\Logger::debug('DAVCAL', 'deleteCalendarObject for calendarId '.$calendarId.' and objectUri '.$objectUri, __FILE__, __LINE__);
         $this->hlp->deleteCalendarEntryForCalendarByUri($calendarId, $objectUri);
 
     }
@@ -462,10 +462,10 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function calendarQuery($calendarId, array $filters) 
     {
-        dbglog('calendarBackendDokuwiki::calendarQuery for calendarId '.$calendarId);
-        dbglog($filters);
+        \dokuwiki\Logger::debug('DAVCAL', 'calendarQuery for calendarId '.$calendarId, __FILE__, __LINE__);
+        \dokuwiki\Logger::debug('DAVCAL', 'Filters count: '.count($filters), __FILE__, __LINE__);
         $result = $this->hlp->calendarQuery($calendarId, $filters);
-        dbglog($result);
+        \dokuwiki\Logger::debug('DAVCAL', 'Query results: '.count($result), __FILE__, __LINE__);
         return $result;
     }
 
@@ -490,7 +490,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getCalendarObjectByUID($principalUri, $uid) 
     {
-        dbglog('calendarBackendDokuwiki::getCalendarObjectByUID for principalUri '.$principalUri.' and uid '.$uid);
+        \dokuwiki\Logger::debug('DAVCAL', 'getCalendarObjectByUID for principalUri '.$principalUri.' and uid '.$uid, __FILE__, __LINE__);
         $calids = array_keys($this->hlp->getCalendarIsForUser($principalUri));
         $event = $this->hlp->getEventWithUid($uid);
         
@@ -560,9 +560,9 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getChangesForCalendar($calendarId, $syncToken, $syncLevel, $limit = null) 
     {
-        dbglog('calendarBackendDokuwiki::getChangesForCalendar for calendarId '.$calendarId.' and syncToken '.$syncToken.' and syncLevel '.$syncLevel);
+        \dokuwiki\Logger::debug('DAVCAL', 'getChangesForCalendar for calendarId '.$calendarId.' and syncToken '.$syncToken.' and syncLevel '.$syncLevel, __FILE__, __LINE__);
         $result = $this->hlp->getChangesForCalendar($calendarId, $syncToken, $syncLevel, $limit);
-        dbglog($result);
+        \dokuwiki\Logger::debug('DAVCAL', 'Changes result: '.($result ? 'found' : 'not found'), __FILE__, __LINE__);
         return $result;
     }
 
@@ -599,7 +599,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getSubscriptionsForUser($principalUri) 
     {
-        dbglog('calendarBackendDokuwiki::getSubscriptionsForUser with principalUri '.$principalUri.', returning empty array()');
+        \dokuwiki\Logger::debug('DAVCAL', 'getSubscriptionsForUser with principalUri '.$principalUri.', returning empty array()', __FILE__, __LINE__);
         return array();
 
     }
@@ -617,7 +617,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function createSubscription($principalUri, $uri, array $properties) 
     {
-        dbglog('calendarBackendDokuwiki::createSubscription for principalUri '.$principalUri.' and uri '.$uri.', returning null');
+        \dokuwiki\Logger::debug('DAVCAL', 'createSubscription for principalUri '.$principalUri.' and uri '.$uri.', returning null', __FILE__, __LINE__);
         return null;
 
     }
@@ -640,7 +640,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function updateSubscription($subscriptionId, DAV\PropPatch $propPatch) 
     {
-        dbglog('calendarBackendDokuwiki::updateSubscription with subscriptionId '.$subscriptionId.', returning false');
+        \dokuwiki\Logger::debug('DAVCAL', 'updateSubscription with subscriptionId '.$subscriptionId.', returning false', __FILE__, __LINE__);
         return;
     }
 
@@ -652,7 +652,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function deleteSubscription($subscriptionId) 
     {
-        dbglog('calendarBackendDokuwiki::deleteSubscription with subscriptionId '.$subscriptionId.', returning');
+        \dokuwiki\Logger::debug('DAVCAL', 'deleteSubscription with subscriptionId '.$subscriptionId.', returning', __FILE__, __LINE__);
         return;
 
     }
@@ -675,7 +675,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getSchedulingObject($principalUri, $objectUri) 
     {
-        dbglog('calendarBackendDokuwiki::getSchedulingObject with principalUri '.$principalUri.' and objectUri '.$objectUri.', returning null');
+        \dokuwiki\Logger::debug('DAVCAL', 'getSchedulingObject with principalUri '.$principalUri.' and objectUri '.$objectUri.', returning null', __FILE__, __LINE__);
         return null;
 
     }
@@ -693,7 +693,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function getSchedulingObjects($principalUri) 
     {
-        dbglog('calendarBackendDokuwiki::getSchedulingObjects for principalUri '.$principalUri.', returning null');
+        \dokuwiki\Logger::debug('DAVCAL', 'getSchedulingObjects for principalUri '.$principalUri.', returning null', __FILE__, __LINE__);
         return null;
 
     }
@@ -707,7 +707,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function deleteSchedulingObject($principalUri, $objectUri) 
     {
-        dbglog('calendarBackendDokuwiki::deleteSchedulingObject for principalUri '.$principalUri.' and objectUri '.$objectUri.', returning');
+        \dokuwiki\Logger::debug('DAVCAL', 'deleteSchedulingObject for principalUri '.$principalUri.' and objectUri '.$objectUri.', returning', __FILE__, __LINE__);
         return;
     }
 
@@ -721,7 +721,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
      */
     function createSchedulingObject($principalUri, $objectUri, $objectData) 
     {
-        dbglog('calendarBackendDokuwiki::createSchedulingObject with principalUri '.$principalUri.' and objectUri '.$objectUri.', returning');
+        \dokuwiki\Logger::debug('DAVCAL', 'createSchedulingObject with principalUri '.$principalUri.' and objectUri '.$objectUri.', returning', __FILE__, __LINE__);
         return;
 
     }

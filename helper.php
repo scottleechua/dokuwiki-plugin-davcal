@@ -17,7 +17,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     * Constructor to load the configuration and the SQLite plugin
     */
   public function __construct() {
-    dbglog('---- DAVCAL helper.php init');
+    \dokuwiki\Logger::debug('DAVCAL', 'Helper initialized', __FILE__, __LINE__);
   }
 
   /** Establish and initialize the database if not already done
@@ -30,14 +30,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $this->sqlite = plugin_load('helper', 'sqlite');
         if(!$this->sqlite)
         {
-            dbglog('This plugin requires the sqlite plugin. Please install it.');
+            \dokuwiki\Logger::error('DAVCAL', 'This plugin requires the sqlite plugin. Please install it.', __FILE__, __LINE__);
             msg('This plugin requires the sqlite plugin. Please install it.', -1);
             return false;
         }
         if(!$this->sqlite->init('davcal', DOKU_PLUGIN.'davcal/db/'))
         {
             $this->sqlite = null;
-            dbglog('Error initialising the SQLite DB for DAVCal');
+            \dokuwiki\Logger::error('DAVCAL', 'Error initialising the SQLite DB for DAVCal', __FILE__, __LINE__);
             return false;
         }
       }
@@ -1899,7 +1899,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function calendarQuery($calendarId, $filters)
   {
-    dbglog('davcal::helper::calendarQuery');
+    \dokuwiki\Logger::debug('DAVCAL', 'Calendar query executed', __FILE__, __LINE__);
     $componentType = null;
     $requirePostFilter = true;
     $timeRange = null;
