@@ -11,7 +11,7 @@ session_write_close(); //close session
 
 global $conf;
 if($conf['allowdebug'])
-    dbglog('---- DAVCAL ics.php init');
+    \dokuwiki\Logger::debug('DAVCAL', 'ICS server initialized', __FILE__, __LINE__);
 
 $path = explode('/', $_SERVER['REQUEST_URI']);
 $icsFile = end($path);
@@ -23,29 +23,46 @@ $hlp =& plugin_load('helper', 'davcal');
 if(is_null($hlp))
 {
     if($conf['allowdebug'])
-        dbglog('Error loading helper plugin');
+        \dokuwiki\Logger::error('DAVCAL', 'Error loading helper plugin', __FILE__, __LINE__);
     die('Error loading helper plugin');
 }
 
 if($hlp->getConfig('disable_ics') === 1)
 {
     if($conf['allowdebug'])
-        dbglog('ICS synchronisation is disabled');
+        \dokuwiki\Logger::debug('DAVCAL', 'ICS synchronisation is disabled', __FILE__, __LINE__);
     die("ICS synchronisation is disabled");
 }
 
-// Retrieve calendar ID based on private URI
-$calid = $hlp->getCalendarForPrivateURL($icsFile);
-
-if($calid === false)
+// Check if this is an aggregated calendar URL
+if(strpos($icsFile, 'dokuwiki-aggregated-') === 0)
 {
-    if($conf['allowdebug'])
-        dbglog('No calendar with this name known: '.$icsFile);
-    die("No calendar with this name known.");
+    // This is an aggregated calendar - handle it specially
+    $stream = $hlp->getAggregatedCalendarAsICSFeed($icsFile);
+    if($stream === false)
+    {
+        if($conf['allowdebug'])
+            \dokuwiki\Logger::error('DAVCAL', 'No aggregated calendar with this name known: '.$icsFile, __FILE__, __LINE__);
+        die("No aggregated calendar with this name known.");
+    }
+}
+else
+{
+    // Regular single calendar
+    // Retrieve calendar ID based on private URI
+    $calid = $hlp->getCalendarForPrivateURL($icsFile);
+
+    if($calid === false)
+    {
+        if($conf['allowdebug'])
+            \dokuwiki\Logger::error('DAVCAL', 'No calendar with this name known: '.$icsFile, __FILE__, __LINE__);
+        die("No calendar with this name known.");
+    }
+
+    // Retrieve calendar contents and serve
+    $stream = $hlp->getCalendarAsICSFeed($calid);
 }
 
-// Retrieve calendar contents and serve
-$stream = $hlp->getCalendarAsICSFeed($calid);
 header("Content-Type: text/calendar");
 header("Content-Transfer-Encoding: Binary");
 header("Content-disposition: attachment; filename=\"calendar.ics\"");

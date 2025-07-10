@@ -1,7 +1,7 @@
 base	davcal
-author  Andreas Boehler
+author  Andreas Boehler, Scott Lee Chua
 email   dev@aboehler.at
-date    2022-08-04
+date    2025-07-07
 name    Calendar PlugIn with CalDAV sharing support
 desc    Create one calendar per page and share/subscribe via CalDAV
 url     http://www.dokuwiki.org/plugin:davcal

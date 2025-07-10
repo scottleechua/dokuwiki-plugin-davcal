@@ -78,7 +78,13 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
 
         foreach($options as $option)
         {
-            list($key, $val) = explode('=', $option);
+            $option = trim($option);
+            if(empty($option)) continue;
+            
+            $parts = explode('=', $option, 2);
+            if(count($parts) < 2) continue;
+            
+            list($key, $val) = $parts;
             $key = strtolower(trim($key));
             $val = trim($val);
             switch($key)
@@ -101,7 +107,13 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                     $fcoptions = explode(';', $val);
                     foreach($fcoptions as $opt)
                     {
-                        list($o, $v) = explode(':', $opt, 2);
+                        $opt = trim($opt);
+                        if(empty($opt)) continue;
+                        
+                        $parts = explode(':', $opt, 2);
+                        if(count($parts) < 2) continue;
+                        
+                        list($o, $v) = $parts;
                         $data['fcoptions'][$o] = $v;
                     }
                 break;
@@ -145,7 +157,11 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                 {
                     $calid = $this->hlp->getCalendarIdForPage($ID);
                     $settings = $this->hlp->getCalendarSettings($calid);
-                    $color = $settings['calendarcolor'];
+                    if (is_array($settings) && isset($settings['calendarcolor'])) {
+                        $color = $settings['calendarcolor'];
+                    } else {
+                        $color = '#3a87ad'; // fallback color if settings are missing
+                    }
                     $data['id'][$id] = $color;
                 }
             }
